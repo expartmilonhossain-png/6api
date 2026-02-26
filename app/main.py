@@ -302,7 +302,7 @@ async def get_sources():
             {
                 "baseUrl": "https://xhamster.com/",
                 "nickname": "xHamster",
-                "favicon": "https://cdn.worldvectorlogo.com/logos/xhamster-3.svg",
+                "favicon": "https://www.xhamster.com/favicon.ico",
                 "accentColor": "#FF5252",
                 "category": "free",
                 "isVerified": False,
@@ -324,7 +324,7 @@ async def get_sources():
             {
                 "baseUrl": "https://www.xvideos.com/",
                 "nickname": "XVideos",
-                "favicon": "https://upload.wikimedia.org/wikipedia/commons/archive/6/60/20230331164707%21XVideos_logo.svg",
+                "favicon": "https://www.xvideos.com/favicon.ico",
                 "accentColor": "#FFAB40",
                 "category": "free",
                 "isVerified": True,
@@ -335,7 +335,7 @@ async def get_sources():
             {
                 "baseUrl": "https://www.pornhub.com/",
                 "nickname": "Pornhub",
-                "favicon": "https://cdn.worldvectorlogo.com/logos/pornhub.svg",
+                "favicon": "https://www.pornhub.com/favicon.ico",
                 "accentColor": "#FF9100",
                 "category": "free",
                 "isVerified": False,
@@ -346,7 +346,7 @@ async def get_sources():
             {
                 "baseUrl": "https://www.youporn.com/",
                 "nickname": "YouPorn",
-                "favicon": "https://www.svgrepo.com/show/303133/youporn-logo.svg",
+                "favicon": "https://www.youporn.com/favicon.ico",
                 "accentColor": "#FF4081",
                 "category": "free",
                 "isVerified": False,
@@ -390,7 +390,7 @@ async def get_sources():
             {
                 "baseUrl": "https://fapnut.net/",
                 "nickname": "OnlyFans",
-                "favicon": "https://cdn.worldvectorlogo.com/logos/onlyfans-wordmark-1.svg",
+                "favicon": "https://onlyfans.com/favicon.ico",
                 "accentColor": "#00AFF0",
                 "category": "paid",
                 "isVerified": False,
