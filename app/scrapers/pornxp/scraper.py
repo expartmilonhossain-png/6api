@@ -83,12 +83,27 @@ def parse_page(html: str, url: str) -> dict[str, Any]:
 
     # Video Stream URL
     video_url = None
+    streams = []
     if video_el:
-        source_el = video_el.select_one("source")
-        if source_el:
+        for source_el in video_el.select("source"):
             src = source_el.get("src")
             if src:
-                video_url = f"https:{src}" if src.startswith("//") else src
+                s_url = f"https:{src}" if src.startswith("//") else src
+                q_label = source_el.get("title") or source_el.get("label") or "360p"
+                if q_label.isdigit():
+                    q_label += "p"
+                streams.append({
+                    "url": s_url,
+                    "quality": q_label
+                })
+        if streams:
+            def _qval(s):
+                try:
+                    return int(s["quality"].replace("p", ""))
+                except:
+                    return 0
+            streams.sort(key=_qval, reverse=True)
+            video_url = streams[0]["url"]
 
     # Tags
     tags = []
@@ -132,7 +147,8 @@ def parse_page(html: str, url: str) -> dict[str, Any]:
         "related_videos": related_videos,
         "video": {
             "default": video_url,
-            "has_video": video_url is not None
+            "has_video": video_url is not None,
+            "streams": streams
         }
     }
 
