@@ -19,7 +19,7 @@ from app.core import cache, cache_cleanup, pool, rate_limit_middleware, rate_lim
 from app.exception_handlers import not_found_handler, internal_error_handler, general_exception_handler
 
 # API Routers
-from app.api.endpoints import recommendations, hls, media
+from app.api.endpoints import recommendations, hls, media, explore
 # We will define new standardized routers here or import them if we moved them.
 # For this refactor, we will define them inline or in a new api module. 
 # To keep it clean, I will implement the Router structure within main.py for now, 
@@ -278,139 +278,7 @@ async def direct_stream_endpoint(
         raise HTTPException(status_code=500, detail=f"Failed to fetch stream URL: {str(e)}")
 
 
-# --- Explore Sources ---
-@api_v1_router.get("/sources", tags=["Sources"])
-async def get_sources():
-    """
-    Returns the list of supported scraper sources for the Explore page.
-    Moving this out of the Flutter app means sources can be updated remotely.
-    """
-    return {
-        "status": "success",
-        "data": [
-            {
-                "baseUrl": "https://masa49.org/",
-                "nickname": "Masa49",
-                "favicon": "https://masa49.org/favicon.ico",
-                "accentColor": "#7C4DFF",
-                "category": "free",
-                "isVerified": False,
-                "hasCategories": True,
-                "searchUrlTemplate": "https://masa49.org/?s={query}",
-                "sourceId": "masa",
-            },
-            {
-                "baseUrl": "https://xhamster.com/",
-                "nickname": "xHamster",
-                "favicon": "https://www.xhamster.com/favicon.ico",
-                "accentColor": "#FF5252",
-                "category": "free",
-                "isVerified": False,
-                "hasCategories": True,
-                "searchUrlTemplate": "https://xhamster.com/search/videos?q={query}",
-                "sourceId": "xhamster",
-            },
-            {
-                "baseUrl": "https://www.xnxx.com/",
-                "nickname": "XNXX",
-                "favicon": "https://www.xnxx.com/favicon.ico",
-                "accentColor": "#448AFF",
-                "category": "free",
-                "isVerified": True,
-                "hasCategories": True,
-                "searchUrlTemplate": "https://www.xnxx.com/search/{query}",
-                "sourceId": "xnxx",
-            },
-            {
-                "baseUrl": "https://www.xvideos.com/",
-                "nickname": "XVideos",
-                "favicon": "https://www.xvideos.com/favicon.ico",
-                "accentColor": "#FFAB40",
-                "category": "free",
-                "isVerified": True,
-                "hasCategories": True,
-                "searchUrlTemplate": "https://www.xvideos.com/?k={query}",
-                "sourceId": "xvideos",
-            },
-            {
-                "baseUrl": "https://www.pornhub.com/",
-                "nickname": "Pornhub",
-                "favicon": "https://www.pornhub.com/favicon.ico",
-                "accentColor": "#FF9100",
-                "category": "free",
-                "isVerified": False,
-                "hasCategories": True,
-                "searchUrlTemplate": "https://www.pornhub.com/video/search?search={query}",
-                "sourceId": "pornhub",
-            },
-            {
-                "baseUrl": "https://www.youporn.com/",
-                "nickname": "YouPorn",
-                "favicon": "https://www.youporn.com/favicon.ico",
-                "accentColor": "#FF4081",
-                "category": "free",
-                "isVerified": False,
-                "hasCategories": True,
-                "searchUrlTemplate": "https://www.youporn.com/search/?query={query}",
-                "sourceId": "youporn",
-            },
-            {
-                "baseUrl": "https://www.redtube.com/",
-                "nickname": "RedTube",
-                "favicon": "https://www.redtube.com/favicon.ico",
-                "accentColor": "#D32F2F",
-                "category": "free",
-                "isVerified": False,
-                "hasCategories": True,
-                "searchUrlTemplate": "https://www.redtube.com/?search={query}",
-                "sourceId": "redtube",
-            },
-            {
-                "baseUrl": "https://beeg.com/",
-                "nickname": "Beeg",
-                "favicon": "https://cdn.brandfetch.io/id21sFe_5X/w/180/h/180/theme/dark/logo.png?c=1bxid64Mup7aczewSAYMX&t=1764366461758",
-                "accentColor": "#00BFA5",
-                "category": "free",
-                "isVerified": False,
-                "hasCategories": True,
-                "searchUrlTemplate": "https://beeg.com/?f={query}",
-                "sourceId": "beeg",
-            },
-            {
-                "baseUrl": "https://spankbang.com/",
-                "nickname": "SpankBang",
-                "favicon": "https://spankbang.com/favicon.ico",
-                "accentColor": "#FFC107",
-                "category": "free",
-                "isVerified": False,
-                "hasCategories": True,
-                "searchUrlTemplate": "https://spankbang.com/s/{query}/",
-                "sourceId": "spankbang",
-            },
-            {
-                "baseUrl": "https://fapnut.net/",
-                "nickname": "OnlyFans",
-                "favicon": "https://onlyfans.com/favicon.ico",
-                "accentColor": "#00AFF0",
-                "category": "paid",
-                "isVerified": False,
-                "hasCategories": True,
-                "searchUrlTemplate": "https://fapnut.net/?s={query}",
-                "sourceId": "fapnut",
-            },
-            {
-                "baseUrl": "https://pornxp.io/",
-                "nickname": "PornXP",
-                "favicon": "https://pornxp.io/favicon.png",
-                "accentColor": "#1a2137",
-                "category": "free",
-                "isVerified": False,
-                "hasCategories": True,
-                "searchUrlTemplate": "https://pornxp.io/search?q={query}",
-                "sourceId": "pornxp",
-            },
-        ],
-    }
+app.include_router(explore.router, prefix="/api/v1")
 
 
 # --- AppHub Version ---
