@@ -306,7 +306,7 @@ async def get_notifications():
         NotificationItem(
             id="2",
             title="Direct Downloads Added",
-            message="You can now download videos directly from XNXX, RedTube, and YouPorn!",
+            message="You can now download videos directly from PornXP, XVideos, Masa, XHamster, XNXX, RedTube, and YouPorn!",
             type="success",
             created_at=datetime.now()
         )
