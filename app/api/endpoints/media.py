@@ -36,7 +36,7 @@ DUMMY_MEDIA_CONFIG = MediaConfigData(
                     id="sports",
                     title="Sports",
                     type="live",
-                    logo_url="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/photo_2026-02-28_11-08-07.svg",
+                    logo_url="https://upload.wikimedia.org/wikipedia/commons/0/0c/Sport_balls.svg",
                     color_hex="#4CAF50",
                     playlist_url="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/Sports2.m3u",
                 ),
