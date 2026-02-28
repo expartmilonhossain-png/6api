@@ -28,8 +28,8 @@ async def thumbnail_proxy(
     if not (is_hqporner or is_youporn or is_pornhub):
         raise HTTPException(status_code=403, detail="Only allowed domains are supported")
         
-    if (is_youporn or is_pornhub) and ".mp4/" not in url_lower:
-        raise HTTPException(status_code=403, detail="Only YouPorn/Pornhub .mp4 video previews are allowed via proxy")
+    if (is_youporn or is_pornhub) and "/plain/" not in url_lower:
+        raise HTTPException(status_code=403, detail="Only YouPorn/Pornhub dynamic /plain/ previews are allowed via proxy")
     
     # Headers to send to upstream
     headers = {}
@@ -92,9 +92,9 @@ def wrap_thumbnail_url(url: str, api_base_url: str) -> str:
         return url
         
     if is_youporn or is_pornhub:
-        # Only proxy dynamic .mp4 video previews (these require valid referer/tokens)
-        # Leave standard static .jpg thumbnails unproxied to save bandwidth
-        if ".mp4/" not in url_lower:
+        # Only proxy dynamic previews (which contain /plain/ and require IP-bound validto tokens)
+        # Leave standard static .jpg thumbnails unproxied to save backend bandwidth
+        if "/plain/" not in url_lower:
             return url
     
     # If already proxied, don't double wrap
