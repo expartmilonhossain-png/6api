@@ -20,8 +20,15 @@ async def thumbnail_proxy(
     if not url:
         raise HTTPException(status_code=400, detail="Missing URL")
     
-    if "hqporner.com" not in url.lower():
-        raise HTTPException(status_code=403, detail="Only HQPorner thumbnails are allowed")
+    url_lower = url.lower()
+    is_hqporner = "hqporner.com" in url_lower
+    is_youporn = "ypncdn.com" in url_lower or "youporn.com" in url_lower
+    
+    if not (is_hqporner or is_youporn):
+        raise HTTPException(status_code=403, detail="Only allowed domains are supported")
+        
+    if is_youporn and ".mp4/" not in url_lower:
+        raise HTTPException(status_code=403, detail="Only YouPorn .mp4 video previews are allowed via proxy")
     
     # Headers to send to upstream
     headers = {}
@@ -34,7 +41,10 @@ async def thumbnail_proxy(
     if referer:
         headers["Referer"] = referer
     else:
-        headers["Referer"] = "https://hqporner.com/"
+        if is_hqporner:
+            headers["Referer"] = "https://hqporner.com/"
+        elif is_youporn:
+            headers["Referer"] = "https://www.youporn.com/"
 
     try:
         # Use a single-use client for simplicity, though a pooled one is better for high volume
@@ -66,12 +76,25 @@ async def thumbnail_proxy(
         raise HTTPException(status_code=500, detail=str(e))
 
 def wrap_thumbnail_url(url: str, api_base_url: str) -> str:
-    """Helper to wrap HQPorner thumbnails in the proxy URL."""
-    if not url or "hqporner.com" not in url.lower():
+    """Helper to wrap specific thumbnails in the proxy URL."""
+    if not url:
         return url
+        
+    url_lower = url.lower()
+    is_hqporner = "hqporner.com" in url_lower
+    is_youporn = "ypncdn.com" in url_lower or "youporn.com" in url_lower
+    
+    if not (is_hqporner or is_youporn):
+        return url
+        
+    if is_youporn:
+        # Only proxy dynamic .mp4 video previews (these require valid referer/tokens)
+        # Leave standard static .jpg thumbnails unproxied to save bandwidth
+        if ".mp4/" not in url_lower:
+            return url
     
     # If already proxied, don't double wrap
-    if "/thumbnails/proxy?url=" in url:
+    if "/thumbnails/proxy?url=" in url_lower:
         return url
         
     return f"{api_base_url.rstrip('/')}/api/v1/thumbnails/proxy?url={quote(url)}"
