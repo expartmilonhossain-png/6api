@@ -360,9 +360,12 @@ async def get_notifications():
 
 
 # --- AppHub Version ---
+import importlib
 from app import apphub_version
-@api_v1_router.get("/apphub/version", tags=["System"])
+
+@app.get("/api/apphub/version", tags=["System"])
 async def get_apphub_version():
+    importlib.reload(apphub_version)
     return {
         "version": apphub_version.VERSION,
         "buildNumber": apphub_version.BUILD_NUMBER,
