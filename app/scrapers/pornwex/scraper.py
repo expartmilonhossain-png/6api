@@ -225,33 +225,69 @@ def get_categories() -> list[dict[str, Any]]:
 
 async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dict[str, Any]]:
     target_url = base_url.rstrip("/")
+    is_search = "/search/" in target_url
 
-    if page > 1:
-        # PornWex pagination: /{N}/ appended directly (e.g., /latest-updates/2/)
-        # Homepage doesn't support pagination, redirect to /latest-updates/ for page > 1
-        if target_url.rstrip("/") == "https://www.pornwex.tv" or target_url.rstrip("/") == "https://pornwex.tv":
-            target_url = f"https://www.pornwex.tv/latest-updates/{page}/"
+    if is_search:
+        # Search uses KT-player AJAX POST for all pages (including page 1 for consistency)
+        # Extract query from URL: /search/{query}/
+        query_match = re.search(r'/search/([^/]+)', target_url)
+        query = query_match.group(1) if query_match else ""
+
+        if page == 1:
+            # Page 1: regular GET request
+            if not target_url.endswith("/"):
+                target_url += "/"
+            html = await fetch_html(target_url)
         else:
-            target_url = f"{target_url}/{page}/"
-    elif not target_url.endswith("/"):
-        target_url += "/"
+            # Page 2+: AJAX POST request
+            post_data = {
+                "mode": "async",
+                "function": "get_block",
+                "block_id": "list_videos_videos_list_search_result",
+                "q": query,
+                "category_ids": "",
+                "sort_by": "",
+                "from_videos": str(page),
+                "from_albums": str(page),
+            }
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+                "X-Requested-With": "XMLHttpRequest",
+                "Referer": target_url + "/",
+            }
+            resp = await pool.client.post(
+                target_url + "/",
+                data=post_data,
+                headers=headers,
+                follow_redirects=True,
+            )
+            resp.raise_for_status()
+            html = resp.text
+    else:
+        # Non-search: standard URL-based pagination
+        if page > 1:
+            if target_url in ("https://www.pornwex.tv", "https://pornwex.tv"):
+                target_url = f"https://www.pornwex.tv/latest-updates/{page}/"
+            else:
+                target_url = f"{target_url}/{page}/"
+        elif not target_url.endswith("/"):
+            target_url += "/"
+        html = await fetch_html(target_url)
 
-    html = await fetch_html(target_url)
     soup = BeautifulSoup(html, "lxml")
-
     items: list[dict[str, Any]] = []
 
-    # PornWex uses .ml-item containers (WP-Movie theme, same as XXXParodyHD)
-    video_cards = soup.select(".ml-item")
+    # PornWex uses .item inside .list-videos for search/AJAX results
+    # Some pages might still use .ml-item (WP-Movie theme)
+    video_cards = soup.select(".list-videos .item, .ml-item, .item")
 
     # Fallback: try other common selectors
     if not video_cards:
         for sel in [".videos-list .video-item", ".thumb-list .thumb-item",
-                    ".list-videos .item", ".video-list .video-item"]:
+                    ".video-list .video-item"]:
             video_cards = soup.select(sel)
             if video_cards:
                 break
-
     # Last fallback: find any container with video links
     if not video_cards:
         for link in soup.select('a[href*="/video/"]'):
@@ -261,10 +297,10 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
 
     for card in video_cards:
         try:
-            # Primary: a.ml-mask link
-            link = card.select_one("a.ml-mask")
+            # Primary link
+            link = card.select_one('a[href*="/video/"]')
             if not link:
-                link = card.select_one('a[href*="/video/"]')
+                link = card.select_one("a.ml-mask")
             if not link:
                 link = card.select_one("a[href]")
             if not link:
@@ -276,28 +312,26 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
             if href.startswith("/"):
                 href = f"https://www.pornwex.tv{href}"
 
-            # Title: .mli-info h2, or link title/oldtitle
-            title_el = card.select_one(".mli-info h2")
+            # Title: strong.title or .mli-info h2
+            title_el = card.select_one(".title, strong.title, .mli-info h2")
             title = _text(title_el) if title_el else (
                 link.get("oldtitle") or link.get("title") or _text(link)
             )
             if not title:
-                title_el = card.select_one("strong, .title, .video-title")
+                title_el = card.select_one("strong, .video-title")
                 title = _text(title_el) if title_el else None
 
             # Thumbnail
             img = card.select_one("img")
             thumb = _best_image_url(img)
 
-            # Duration: .mli-info1 or .duration
-            dur_el = card.select_one(".mli-info1, .duration, .thumb-duration, .video-duration")
+            # Duration: .duration or .mli-info1
+            dur_el = card.select_one(".duration, .thumb-duration, .video-duration, .mli-info1")
             duration = _text(dur_el) if dur_el else None
 
             # Views
-            views = None
             views_el = card.select_one(".views, .video-views")
-            if views_el:
-                views = _text(views_el)
+            views = _text(views_el) if views_el else None
 
             # Upload time
             time_el = card.select_one(".added, .video-added, .date, time, em")
@@ -315,4 +349,6 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
             continue
 
     return items
+
+
 
