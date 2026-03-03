@@ -208,11 +208,17 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
     """List videos from an HQPorner listing/category page."""
     url = base_url.rstrip("/")
 
-    # Pagination: append /page_number for pages > 1
+    # Pagination: handle different URL patterns
     if page > 1:
-        # Category pages: /category/name/2
-        # Home/top: /hdporn/2 or /top/2
-        url = f"{url}/{page}"
+        if "?" in url:
+            # Search URL: /?q=query -> /?q=query&p=2
+            url = f"{url}&p={page}"
+        elif url == "https://hqporner.com" or url == "http://hqporner.com":
+            # Home Page: / -> /hdporn/2
+            url = f"{url}/hdporn/{page}"
+        else:
+            # Category/Top: /category/name -> /category/name/2
+            url = f"{url}/{page}"
 
     try:
         html = await fetch_html(url)
