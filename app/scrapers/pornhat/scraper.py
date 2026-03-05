@@ -187,7 +187,9 @@ async def scrape(url: str) -> dict[str, Any]:
 
 
 async def list_videos(base_url: str, page: int = 1, limit: int = 100) -> list[dict[str, Any]]:
-    url = base_url.rstrip("/")
+    url = base_url
+    if "/search/" not in url:
+        url = url.rstrip("/")
 
     if page > 1:
         sep = "&" if "?" in url else "?"
@@ -202,16 +204,17 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 100) -> list[di
     items: list[dict] = []
     seen_hrefs: set[str] = set()
 
-    # Pornhat video grid is inside #custom_list_videos_videos (or id starting with custom_list_videos)
-    # Each card is div.item.thumb-bl-video (class "item thumb-bl thumb-bl-video video_N")
-    # Scope to the video list container to skip non-video sections (channels, models, friends)
+    # Pornhat video grid is inside #custom_list_videos_videos or .list_video_wrapper
+    # Each card is usually div.item.thumb-bl-video or div.thumb-bl-video
     video_list = (
         soup.select_one("#custom_list_videos_videos")
         or soup.select_one("[id^='custom_list_videos']")
+        or soup.select_one(".list_video_wrapper")
         or soup  # fallback to full page
     )
 
-    for card in video_list.select("div.item.thumb-bl-video, div.thumb-bl-video"):
+    cards = video_list.select("div.item.thumb-bl-video, div.thumb-bl-video, .video-box, .item")
+    for card in cards:
         if len(items) >= limit:
             break
         try:
