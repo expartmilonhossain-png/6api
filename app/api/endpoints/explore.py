@@ -189,7 +189,7 @@ EXPLORE_SOURCES = [
         category="free",
         isVerified=False,
         hasCategories=True,
-        searchUrlTemplate="https://www.tube8.com/search?q={query}",
+        searchUrlTemplate="https://www.tube8.com/searches.html/?q={query}",
         sourceId="tube8",
         disable=False,
     ),

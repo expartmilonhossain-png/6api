@@ -200,53 +200,67 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
 
     soup = BeautifulSoup(html, "lxml")
     items: list[dict] = []
+    seen_hrefs: set[str] = set()
 
-    # Pornhat video card containers
-    for box in soup.select(
-        ".video-item, .thumb-item, .video_item, [class*='video-block'], li[class*='video']"
-    ):
+    # Pornhat video grid is inside #custom_list_videos_videos (or id starting with custom_list_videos)
+    # Each card is div.item.thumb-bl-video (class "item thumb-bl thumb-bl-video video_N")
+    # Scope to the video list container to skip non-video sections (channels, models, friends)
+    video_list = (
+        soup.select_one("#custom_list_videos_videos")
+        or soup.select_one("[id^='custom_list_videos']")
+        or soup  # fallback to full page
+    )
+
+    for card in video_list.select("div.item.thumb-bl-video, div.thumb-bl-video"):
+        if len(items) >= limit:
+            break
         try:
-            # Link + title
-            link_tag = box.select_one("a[href*='/gallery/'], a[href*='/video/']")
-            title_tag = box.select_one(".video-title, .thumb-title, .title, a[title]")
-
-            href = None
-            title = None
-
-            if link_tag:
-                href = link_tag.get("href", "")
-                title = link_tag.get("title", "")
-
-            if title_tag and not title:
-                title = title_tag.get_text(strip=True)
-
-            if not href:
+            # The main anchor has href="/video/slug/" and a title attribute
+            a = card.select_one("a[href*='/video/']")
+            if not a:
                 continue
+
+            href = a.get("href", "")
+            if not href or href in seen_hrefs:
+                continue
+            seen_hrefs.add(href)
 
             if not href.startswith("http"):
                 href = "https://www.pornhat.com" + href
 
-            # Thumbnail
+            # Title from anchor's title attribute (most reliable)
+            title = a.get("title", "")
+
+            # Thumbnail from img data-original (lazy-loaded)
             thumb = None
-            img = box.select_one("img[data-src], img[data-original], img[src]")
+            img = a.find("img") or card.find("img")
             if img:
-                thumb = img.get("data-src") or img.get("data-original") or img.get("src")
-                if not title and img.get("alt"):
-                    title = img.get("alt")
+                thumb = (
+                    img.get("data-original")
+                    or img.get("data-src")
+                    or img.get("src")
+                )
+                if not title:
+                    title = img.get("alt", "")
 
-            # Duration
-            dur_el = box.select_one(".duration, .video-duration, .time")
-            duration = dur_el.get_text(strip=True) if dur_el else "0:00"
+            # Preview video URL from data-preview-custom on the anchor
+            preview = a.get("data-preview-custom") or a.get("data-preview") or thumb
 
-            # Views
+            # Duration from .video-meta or .duration inside the card
+            duration = "0:00"
+            dur_el = card.select_one(".video-meta, .duration, .time, .thumb-bl-info .duration")
+            if dur_el:
+                duration = dur_el.get_text(strip=True)
+
+            # Views — appears as text like "1.9K" inside .thumb-total or similar
             views = "0"
-            v_el = box.select_one(".views, .view-count, .info-views")
+            v_el = card.select_one(".thumb-total, .views, .view-count, .info-views")
             if v_el:
                 views = v_el.get_text(strip=True).replace("views", "").strip()
 
             # Uploader
             uploader = "Unknown"
-            u_el = box.select_one(".username, .uploader, .author a")
+            u_el = card.select_one(".username a, .uploader a, .author a, .thumb-bl-info a")
             if u_el:
                 uploader = u_el.get_text(strip=True)
 
@@ -257,9 +271,11 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
                 "duration": duration,
                 "views": views,
                 "uploader_name": uploader,
-                "preview_url": thumb,
+                "preview_url": preview,
             })
         except Exception:
             continue
 
     return items[:limit]
+
+
