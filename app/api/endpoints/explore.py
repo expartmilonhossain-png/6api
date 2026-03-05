@@ -164,7 +164,7 @@ EXPLORE_SOURCES = [
         accentColor="#E040FB",
         category="free",
         isVerified=False,
-        hasCategories=True,
+        hasCategories=False,
         searchUrlTemplate="https://xxxparodyhd.net/?s={query}",
         sourceId="xxxparodyhd",
         disable=True,
