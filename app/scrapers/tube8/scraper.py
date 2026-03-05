@@ -37,6 +37,45 @@ async def fetch_html(url: str) -> str:
     return await pool_fetch_html(url, headers=headers)
 
 
+async def _resolve_proxy_url(proxy_url: str) -> list[dict]:
+    """
+    Resolve a Tube8 proxy URL (e.g., /media/mp4?s=...) to actual CDN streams.
+    Returns a list of stream objects with quality, url, format.
+    """
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "application/json",
+        }
+        async with httpx.AsyncClient(headers=headers, timeout=10.0, follow_redirects=True) as client:
+            resp = await client.get(proxy_url)
+            if resp.status_code != 200:
+                return []
+            
+            data = resp.json()
+            if isinstance(data, list):
+                streams = []
+                for item in data:
+                    quality = item.get("quality")
+                    video_url = item.get("videoUrl")
+                    fmt = item.get("format", "mp4")
+                    
+                    if video_url:
+                        # Convert quality to string
+                        if isinstance(quality, int):
+                            quality = str(quality)
+                        
+                        streams.append({
+                            "quality": quality if quality else "unknown",
+                            "url": video_url,
+                            "format": fmt
+                        })
+                return streams
+    except Exception:
+        pass
+    
+    return []
+
 def _extract_video_streams(html: str) -> dict[str, Any]:
     """
     Tube8 is on MindGeek/Aylo network — same mediaDefinitions structure as PornHub/RedTube.
@@ -190,8 +229,69 @@ def parse_page(html: str, url: str) -> dict[str, Any]:
 
 async def scrape(url: str) -> dict[str, Any]:
     html = await fetch_html(url)
-    return parse_page(html, url)
+    result = parse_page(html, url)
+    
+    # Check if we have proxy URLs and resolve them to real CDN streams
+    video_data = result.get("video", {})
+    streams = video_data.get("streams", [])
+    
+    for stream in streams[:]:  # Copy list to modify while iterating
+        stream_url = stream.get("url", "")
+        if "/media/" in stream_url and "?s=" in stream_url:
+            # This is a proxy URL - resolve it
+            resolved_streams = await _resolve_proxy_url(stream_url)
+            if resolved_streams:
+                # Remove the proxy stream
+                streams.remove(stream)
+                
+                for rs in resolved_streams:
+                    q = rs.get("quality", "")
+                    
+                    if rs.get("format") == "hls" or ".m3u8" in rs.get("url", ""):
+                        rs["format"] = "hls"
+                        # Extract quality from URL if we have adaptive or unknown quality
+                        if not q or q == "adaptive" or q == "unknown" or q == "hls":
+                            mq = re.search(r"/(\d{3,4})[pP]?/", rs.get("url", ""))
+                            if not mq:
+                                mq = re.search(r"(\d{3,4})[pP]?[_/]", rs.get("url", ""))
+                            if mq:
+                                rs["quality"] = f"{mq.group(1)}p"
+                            else:
+                                rs["quality"] = "adaptive"
+                        elif str(q).isdigit():
+                            rs["quality"] = f"{q}p"
+                        else:
+                            rs["quality"] = q
+                    else:
+                        # Ensure suffix 'p' for numeric MP4 qualities
+                        if q and str(q).isdigit():
+                            rs["quality"] = f"{q}p"
+                
+                streams.extend(resolved_streams)
 
+    # Rearrange: Sort strictly by numeric quality descending
+    def get_quality_val(s):
+        q = s.get("quality", "")
+        if not q: return 0
+        # Extract digits: "720P" -> 720
+        digits = "".join(filter(str.isdigit, str(q)))
+        return int(digits) if digits else 0
+        
+    streams.sort(key=get_quality_val, reverse=True)
+    
+    # Write back to result
+    result["video"]["streams"] = streams
+    
+    # Preference: HLS first if available, else first MP4
+    if streams:
+        hls_stream = next((s for s in streams if s.get("format") == "hls"), None)
+        if hls_stream:
+            result["video"]["default"] = hls_stream["url"]
+        else:
+            result["video"]["default"] = streams[0]["url"]
+            
+    result["video"]["has_video"] = len(streams) > 0
+    return result
 
 async def list_videos(base_url: str, page: int = 1, limit: int = 100) -> list[dict[str, Any]]:
     url = base_url.rstrip("/")
