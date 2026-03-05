@@ -28,7 +28,13 @@ def get_categories() -> list[dict]:
 
 
 async def fetch_html(url: str) -> str:
-    return await pool_fetch_html(url, headers={"Referer": "https://www.tube8.com/"})
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Referer": "https://www.tube8.com/",
+        "Cookie": "platform=pc" # Force desktop layout for consistent script tags
+    }
+    return await pool_fetch_html(url, headers=headers)
 
 
 def _extract_video_streams(html: str) -> dict[str, Any]:
@@ -85,7 +91,10 @@ def _extract_video_streams(html: str) -> dict[str, Any]:
                         q = f"{q}p"
                     elif not q:
                         q = "adaptive"
-                    mq = re.search(r"(\d{3,4})[pP]?[_/]", video_url)
+                    mq = re.search(r"/(\d{3,4})[pP]?/", video_url)
+                    if not mq:
+                        mq = re.search(r"(\d{3,4})[pP]?[_/]", video_url)
+                    
                     if mq and q == "adaptive":
                         q = f"{mq.group(1)}p"
                     stream["quality"] = q
