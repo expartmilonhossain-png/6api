@@ -191,7 +191,7 @@ async def scrape(url: str) -> dict[str, Any]:
     return parse_page(html, url)
 
 
-async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dict[str, Any]]:
+async def list_videos(base_url: str, page: int = 1, limit: int = 100) -> list[dict[str, Any]]:
     url = base_url.rstrip("/")
 
     if page > 1:

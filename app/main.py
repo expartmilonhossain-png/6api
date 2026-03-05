@@ -164,14 +164,14 @@ async def create_scrape(request: Request, body: ScrapeRequestV1) -> ScrapeRespon
     return ScrapeResponse(**data)
 
 @api_v1_router.get("/videos", response_model=list[ListItem], response_model_exclude_unset=True, tags=["Videos"])
-async def list_videos(request: Request, base_url: str, page: int = 1, limit: int = 20) -> list[ListItem]:
+async def list_videos(request: Request, base_url: str, page: int = 1, limit: int = 100) -> list[ListItem]:
     """
     List videos from a category/channel URL.
     Renamed from /list to GET /videos.
     """
     if page < 1: page = 1
     if limit < 1: limit = 1
-    if limit > 60: limit = 60
+    if limit > 200: limit = 200
     
     # Check cache (v2 optimization)
     cache_key = f"list:{base_url}:p{page}:l{limit}"
