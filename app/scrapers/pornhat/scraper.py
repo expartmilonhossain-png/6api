@@ -188,14 +188,11 @@ async def scrape(url: str) -> dict[str, Any]:
 
 async def list_videos(base_url: str, page: int = 1, limit: int = 100) -> list[dict[str, Any]]:
     url = base_url
-    if "/search/" not in url:
-        url = url.rstrip("/")
+    if not url.endswith("/"):
+        url += "/"
 
     if page > 1:
         # Pornhat uses path-based pagination: /page/ or /search/query/page/
-        # Ensure url ends with a slash before appending page
-        if not url.endswith("/"):
-            url += "/"
         url += f"{page}/"
 
     try:
