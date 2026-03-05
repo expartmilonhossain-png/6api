@@ -206,56 +206,69 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
     soup = BeautifulSoup(html, "lxml")
     items: list[dict] = []
 
-    # Tube8 uses similar card structure to RedTube
-    for box in soup.select("li.videoblock_list, .video-item, .pcVideoListItem"):
+    # Tube8 uses .gtm-event-thumb-click as anchor on each thumbnail
+    # Structure: outer div > [.thumb-link a.gtm-event-thumb-click img] [.video-title a.video-title-text]
+    seen_hrefs: set[str] = set()
+
+    for a in soup.select("a.gtm-event-thumb-click"):
         try:
-            # Title & link
-            title_tag = box.select_one(
-                ".video-title-text, .video_title a, .title a, a.img-wrapper[title]"
-            )
-            link_tag = box.select_one("a.video_link, a.img-wrapper, a[href*='/video/']")
-
-            href = None
-            title = None
-
-            if title_tag:
-                title = title_tag.get_text(strip=True)
-                href = title_tag.get("href")
-
-            if not href and link_tag:
-                href = link_tag.get("href")
-                if not title:
-                    title = link_tag.get("title", "")
-
-            if not href:
+            href = a.get("href", "")
+            if not href or href in seen_hrefs:
                 continue
+            seen_hrefs.add(href)
 
             if not href.startswith("http"):
                 href = "https://www.tube8.com" + href
 
-            # Thumbnail
+            # Thumbnail from img inside the thumb anchor
             thumb = None
-            img = box.select_one("img.thumb, img.lazy, img[data-src], img[data-thumb_url]")
+            img = a.find("img")
             if img:
-                thumb = img.get("data-src") or img.get("data-thumb_url") or img.get("src")
-                if not title and img.get("alt"):
-                    title = img.get("alt")
+                thumb = (
+                    img.get("data-src")
+                    or img.get("data-thumb_url")
+                    or img.get("src")
+                )
+
+            # Card container = parent of this anchor (div.thumb-link or similar)
+            # The title lives in a sibling div or close ancestor
+            card = a.parent  # e.g. div.thumb-link
+            card_parent = card.parent if card else None  # e.g. div.thumb-info-wrapper
+
+            title = None
+            # Title: a.video-title-text inside the card parent area
+            if card_parent:
+                title_el = card_parent.select_one(
+                    "a.video-title-text, .video-title a, .title a, a[class*='title']"
+                )
+                if title_el:
+                    title = title_el.get("title") or title_el.get_text(strip=True)
+
+            # Fallback: title from thumb anchor's title attribute
+            if not title:
+                title = a.get("title") or a.get("data-label2") or ""
 
             # Duration
-            dur_el = box.select_one(".tm_video_duration, .duration, .video_duration")
-            duration = dur_el.get_text(strip=True) if dur_el else "0:00"
+            duration = "0:00"
+            container = card_parent or card
+            if container:
+                dur_el = container.select_one(".duration, .tm_video_duration, .video-duration")
+                if dur_el:
+                    duration = dur_el.get_text(strip=True)
 
             # Views
             views = "0"
-            v_el = box.select_one("span.info-views, .views, .video_views")
-            if v_el:
-                views = v_el.get_text(strip=True).replace("views", "").strip()
+            if container:
+                v_el = container.select_one(".info-views, .views, .video_views")
+                if v_el:
+                    views = v_el.get_text(strip=True).replace("views", "").strip()
 
             # Uploader
             uploader = "Unknown"
-            u_el = box.select_one(".author-title-text, .username a, .video-uploader a")
-            if u_el:
-                uploader = u_el.get_text(strip=True)
+            if container:
+                u_el = container.select_one(".author-title-text, .username a, .uploader a")
+                if u_el:
+                    uploader = u_el.get_text(strip=True)
 
             items.append({
                 "url": href,
@@ -270,3 +283,4 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
             continue
 
     return items[:limit]
+
