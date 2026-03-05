@@ -12,6 +12,7 @@ class ExploreSourceResponse(BaseModel):
     searchUrlTemplate: str = ""
     sourceId: str
     disable: bool = False
+    pageSize: int = 20
 
 class ExploreCategoryResponse(BaseModel):
     id: str
