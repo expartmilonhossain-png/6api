@@ -24,12 +24,13 @@ async def thumbnail_proxy(
     is_hqporner = "hqporner.com" in url_lower
     is_youporn = "ypncdn.com" in url_lower or "youporn.com" in url_lower
     is_pornhub = "phncdn.com" in url_lower or "pornhub.com" in url_lower
+    is_redtube = "rdtcdn.com" in url_lower or "redtube.com" in url_lower
     
-    if not (is_hqporner or is_youporn or is_pornhub):
+    if not (is_hqporner or is_youporn or is_pornhub or is_redtube):
         raise HTTPException(status_code=403, detail="Only allowed domains are supported")
         
-    if (is_youporn or is_pornhub) and "/plain/" not in url_lower:
-        raise HTTPException(status_code=403, detail="Only YouPorn/Pornhub dynamic /plain/ previews are allowed via proxy")
+    if (is_youporn or is_pornhub or is_redtube) and "/plain/" not in url_lower:
+        raise HTTPException(status_code=403, detail="Only YouPorn/Pornhub/RedTube dynamic /plain/ previews are allowed via proxy")
     
     # Headers to send to upstream
     headers = {}
@@ -48,6 +49,8 @@ async def thumbnail_proxy(
             headers["Referer"] = "https://www.youporn.com/"
         elif is_pornhub:
             headers["Referer"] = "https://www.pornhub.com/"
+        elif is_redtube:
+            headers["Referer"] = "https://www.redtube.com/"
 
     try:
         # Use a single-use client for simplicity, though a pooled one is better for high volume
@@ -87,11 +90,12 @@ def wrap_thumbnail_url(url: str, api_base_url: str) -> str:
     is_hqporner = "hqporner.com" in url_lower
     is_youporn = "ypncdn.com" in url_lower or "youporn.com" in url_lower
     is_pornhub = "phncdn.com" in url_lower or "pornhub.com" in url_lower
+    is_redtube = "rdtcdn.com" in url_lower or "redtube.com" in url_lower
     
-    if not (is_hqporner or is_youporn or is_pornhub):
+    if not (is_hqporner or is_youporn or is_pornhub or is_redtube):
         return url
         
-    if is_youporn or is_pornhub:
+    if is_youporn or is_pornhub or is_redtube:
         # Only proxy dynamic previews (which contain /plain/ and require IP-bound validto tokens)
         # Leave standard static .jpg thumbnails unproxied to save backend bandwidth
         if "/plain/" not in url_lower:
