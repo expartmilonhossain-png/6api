@@ -1,11 +1,31 @@
-import httpx
+from curl_cffi.requests import AsyncSession
 from fastapi import APIRouter, HTTPException, Query, Response, Request
 from fastapi.responses import StreamingResponse
 from urllib.parse import quote
 import logging
+import asyncio
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# Shared session for connection pooling and browser impersonation
+_proxy_session: AsyncSession | None = None
+_session_lock = asyncio.Lock()
+
+async def get_proxy_session() -> AsyncSession:
+    """Get or initialize the global AsyncSession for the thumbnail proxy."""
+    global _proxy_session
+    if _proxy_session is None:
+        async with _session_lock:
+            if _proxy_session is None:
+                # Initialize with chrome120 impersonation to look like a real browser
+                _proxy_session = AsyncSession(
+                    impersonate="chrome120",
+                    follow_redirects=True,
+                    timeout=15.0,
+                    # Pooling is handled internally by curl_cffi
+                )
+    return _proxy_session
 
 @router.get("/proxy", summary="Thumbnail Proxy")
 async def thumbnail_proxy(
@@ -56,9 +76,10 @@ async def thumbnail_proxy(
             headers["Referer"] = "https://www.tube8.com/"
 
     try:
-        # Use a single-use client for simplicity, though a pooled one is better for high volume
-        async with httpx.AsyncClient(headers=headers, follow_redirects=True, timeout=15.0) as client:
-            resp = await client.get(url)
+        session = await get_proxy_session()
+        
+        # Use a timeout context for the request
+        resp = await session.get(url, headers=headers)
             
         if resp.status_code >= 400:
             logger.warning(f"Thumbnail proxy upstream error {resp.status_code} for {url}")
@@ -77,11 +98,14 @@ async def thumbnail_proxy(
             }
         )
                 
-    except httpx.RequestError as e:
-        logger.error(f"Thumbnail Proxy request error: {e}")
-        raise HTTPException(status_code=502, detail=f"Failed to connect to upstream: {str(e)}")
     except Exception as e:
-        logger.error(f"Thumbnail Proxy unexpected error: {e}")
+        # Check specifically for curl_cffi errors if possible, or generic catch-all
+        err_str = str(e).lower()
+        if "timeout" in err_str:
+            logger.warning(f"Thumbnail Proxy timeout for {url}: {e}")
+            raise HTTPException(status_code=504, detail="Upstream timeout")
+        
+        logger.error(f"Thumbnail Proxy unexpected error for {url}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 def wrap_thumbnail_url(url: str, api_base_url: str) -> str:
