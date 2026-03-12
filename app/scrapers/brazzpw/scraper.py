@@ -71,35 +71,31 @@ async def scrape(url: str) -> dict:
                 except:
                     pass
             
-    # Fallback to script extraction if needed
+    # Try to extract HLS or MP4 from iframe
     hls_url = None
-    if not video_url:
-        if iframe:
-            iframe_src = iframe.get('src')
-            if iframe_src:
-                if not iframe_src.startswith('http'):
-                    iframe_src = f"https://brazzpw.com{iframe_src}"
+    if iframe:
+        iframe_src = iframe.get('src')
+        if iframe_src:
+            if not iframe_src.startswith('http'):
+                iframe_src = f"https://brazzpw.com{iframe_src}"
+            
+            try:
+                player_html = await fetch_html(iframe_src)
                 
-                try:
-                    player_html = await fetch_html(iframe_src)
-                    
-                    # Try to find MP4
+                # Try to find HLS first
+                m_hls = re.search(r'src\s*:\s*["\']([^"\']+\.m3u8[^"\']*)["\']', player_html)
+                if m_hls:
+                    hls_val = m_hls.group(1)
+                    from urllib.parse import urljoin
+                    hls_url = urljoin(iframe_src, hls_val)
+                
+                # Try to find MP4 as secondary
+                if not video_url:
                     m = re.search(r'file\s*:\s*["\'](https?://[^"\']+\.mp4[^"\']*)["\']', player_html)
                     if m:
                         video_url = m.group(1)
-                    
-                    # Try to find HLS
-                    # src: "m3u8_11473421.m3u8?hash=177332&time=177332"
-                    m_hls = re.search(r'src\s*:\s*["\']([^"\']+\.m3u8[^"\']*)["\']', player_html)
-                    if m_hls:
-                        hls_val = m_hls.group(1)
-                        if not hls_val.startswith('http'):
-                            from urllib.parse import urljoin
-                            hls_url = urljoin(iframe_src, hls_val)
-                        else:
-                            hls_url = hls_val
-                except:
-                    pass
+            except:
+                pass
 
 
     if not video_url and not hls_url:
@@ -129,8 +125,8 @@ async def scrape(url: str) -> dict:
         "video": {
             "streams": [{"quality": "720p", "url": video_url, "format": "mp4"}] if video_url else [],
             "hls": hls_url,
-            "default": video_url or hls_url,
-            "has_video": video_url is not None or hls_url is not None
+            "default": hls_url or video_url,
+            "has_video": hls_url is not None or video_url is not None
         }
     }
 
