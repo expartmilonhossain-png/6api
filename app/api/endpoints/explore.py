@@ -230,6 +230,7 @@ EXPLORE_SOURCES = [
         searchUrlTemplate="https://www.gosexpod.com/search/videos?q={query}",
         sourceId="gosexpod",
         disable=False,
+        pageSize=48,
     ),
     ExploreSourceResponse(
         baseUrl="https://watcherotic.com/",
