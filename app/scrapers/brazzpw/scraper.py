@@ -161,7 +161,7 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
     
     # Selectors for video cards based on research
     # brazzpw uses standard tube layout, often .item or .video-box
-    cards = soup.select('div.item, div.video-box, .thumb-block')
+    cards = soup.select('div.item, div.video-box, .thumb-block, article.post')
     for card in cards:
         link_el = card.find('a')
         if not link_el: continue
@@ -172,21 +172,45 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
         img_el = card.find('img')
         thumb = img_el.get('data-src') or img_el.get('src') if img_el else ""
         
-        title_el = card.find('p', class_='title') or card.find('span', class_='title') or link_el
-        title = title_el.get_text(strip=True) if title_el else ""
+        # Priority 1: Get title from 'title' attribute of the link
+        title = link_el.get('title', '')
         
-        # Duration check
+        # Priority 2: Extract from entry-header if title is still empty or messy
+        header = card.find('header', class_='entry-header')
+        upload_date = None
+        if header:
+            header_text = header.get_text(strip=True)
+            match = re.search(r'([A-Z][a-z]{2}\s\d{2}):\s*(.*)', header_text)
+            if match:
+                upload_date = match.group(1)
+                if not title:
+                    title = match.group(2)
+            elif not title:
+                title = header_text
+
+        # If still no title, fallback to text but try to exclude metadata
+        if not title:
+            title = link_el.get_text(strip=True)
+
+        # Duration and Views check
         duration = None
-        dur_el = card.find(class_='duration')
+        views = None
+        
+        dur_el = card.find(class_='duration') or card.select_one('.view-count span:nth-of-type(2)')
         if dur_el:
             duration = dur_el.get_text(strip=True)
+            
+        views_el = card.select_one('.view-count span:nth-of-type(1)')
+        if views_el:
+            views = views_el.get_text(strip=True)
 
         videos.append({
             "url": f"https://brazzpw.com{href}" if href.startswith('/') else href,
             "title": title,
             "thumbnail_url": thumb,
             "duration": duration,
-            "views": None,
+            "views": views,
+            "upload_date": upload_date,
             "uploader_name": "BrazzPW"
         })
         
