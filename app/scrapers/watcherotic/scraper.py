@@ -121,8 +121,11 @@ async def scrape(url: str) -> dict:
 async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dict]:
     url = base_url
     if page > 1:
-        sep = "&" if "?" in base_url else "?"
-        url = f"{base_url}{sep}page={page}"
+        # WatchErotic uses path-based pagination: base_url/page/
+        # base_url might be "https://watcherotic.com/most-popular/" or "https://watcherotic.com/most-popular"
+        # We want "https://watcherotic.com/most-popular/2/"
+        clean_base = base_url.rstrip('/')
+        url = f"{clean_base}/{page}/"
             
     html = await fetch_html(url)
     soup = BeautifulSoup(html, 'lxml')
