@@ -236,19 +236,32 @@ async def get_stream_url(url: str, quality: str = "default", api_base_url: str =
             logger.warning(f"Quality {quality} not available, using default")
     
     # Determine format and refine quality label
+    # First, check if the scraper provided a specific format
     fmt = "mp4"
-    should_proxy = False
-    referer = ""
-    if ".m3u8" in stream_url:
+    selected_stream = matching[0] if (quality != "default" and matching) else None
+    if not selected_stream and quality == "default":
+        # Try to find the stream object for the default URL
+        streams = video_data.get("streams", [])
+        for s in streams:
+            if s.get("url") == stream_url:
+                selected_stream = s
+                break
+    
+    if selected_stream and selected_stream.get("format"):
+        fmt = selected_stream["format"]
+    elif ".m3u8" in stream_url:
         fmt = "hls"
         if selected_quality == "default":
             selected_quality = "adaptive"
+
+    should_proxy = False
+    referer = ""
             
-        # PROXY WRAPPER FOR BEEG and RedTube
-        if "externulls.com" in stream_url or "beeg.com" in stream_url:
-             should_proxy = True
-             referer = "https://beeg.com/"
-             
+    # PROXY WRAPPER FOR BEEG and RedTube
+    if "externulls.com" in stream_url or "beeg.com" in stream_url:
+         should_proxy = True
+         referer = "https://beeg.com/"
+         
     # Also proxy MP4s from PornXP
     if "pornxp.com" in stream_url or "porn-xp.com" in stream_url:
          should_proxy = True
