@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "AppHub API"
     APP_VERSION: str = "2.2.0"
     DEBUG: bool = False
-    BASE_URL: str = ""  # e.g. https://apphubx.store/4.0  (set in .env if needed)
+    BASE_URL: str = ""  # e.g. https://apphubx.store/  (set in .env if needed)
     
     # Security
     SECRET_KEY: str = "change-this-to-a-secure-key"

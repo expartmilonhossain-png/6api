@@ -172,7 +172,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://www.pornwex.tv/",
         nickname="PornWex",
-        favicon="https://www.pornwex.tv/favicon.ico",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/favicon%20(18).ico",
         accentColor="#FF6D00",
         category="free",
         isVerified=False,
@@ -184,7 +184,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://www.tube8.com/",
         nickname="Tube8",
-        favicon="https://www.tube8.com/favicon.ico",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/favicon%20(17).ico",
         accentColor="#E53935",
         category="free",
         isVerified=False,
@@ -197,7 +197,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://www.pornhat.com/",
         nickname="PornHat",
-        favicon="https://www.pornhat.com/favicon.ico",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/favicon%20(16).ico",
         accentColor="#212121",
         category="free",
         isVerified=False,
@@ -210,7 +210,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://brazzpw.com/",
         nickname="BrazzPW",
-        favicon="https://brazzpw.com/favicon.ico",
+        favicon="https://github.com/milon4999/apphub-release/raw/refs/heads/main/logo/favicon%20(15).ico",
         accentColor="#FF9800",
         category="free",
         isVerified=False,
@@ -223,7 +223,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://www.gosexpod.com/",
         nickname="Gosexpod",
-        favicon="https://www.gosexpod.com/favicon.ico",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/favicon%20(14).ico",
         accentColor="#673AB7",
         category="free",
         isVerified=False,
@@ -236,7 +236,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://watcherotic.com/",
         nickname="Watcherotic",
-        favicon="https://watcherotic.com/favicon.ico",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/favicon%20(13).ico",
         accentColor="#00BCD4",
         category="free",
         isVerified=False,
