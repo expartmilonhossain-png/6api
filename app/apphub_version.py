@@ -8,7 +8,7 @@ RELEASE_DATE = "2026-03-27T19:00:00Z"
 
 # File Information
 DOWNLOAD_URLS = {
-    "arm64-v8a": "",
+    "arm64-v8a": "http://apphubx.store/apphub/app-arm64-v8a-release.apk",
     "armeabi-v7a": "",
     "x86": "",
     "x86_64": "",
