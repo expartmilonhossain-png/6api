@@ -424,11 +424,13 @@ async def get_apphub_version():
         "minSupportedBuild": getattr(apphub_version, "MIN_SUPPORTED_BUILD", 1),
         "releaseDate": getattr(apphub_version, "RELEASE_DATE", ""),
         "downloadUrl": apphub_version.DOWNLOAD_URL,
+        "downloadUrls": getattr(apphub_version, "DOWNLOAD_URLS", {}),
         "apkHash": getattr(apphub_version, "APK_HASH", ""),
         "changelog": apphub_version.CHANGELOG.strip(),
         "changelogTitle": apphub_version.CHANGELOG_TITLE,
         "isMandatory": apphub_version.IS_MANDATORY,
         "sizeBytes": apphub_version.SIZE_BYTES,
+        "downloadSizes": getattr(apphub_version, "DOWNLOAD_SIZES", {}),
     }
 
 
