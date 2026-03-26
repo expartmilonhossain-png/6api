@@ -173,7 +173,12 @@ def _extract_views(video_obj: Optional[dict[str, Any]], html: str, soup: Beautif
     if m:
         v = m.group(1).strip().replace(" ", "")
         v = v.rstrip(",")
-        return v or None
+        if v: return v
+
+    # One last attempt: search the entire HTML for window.initials views if not found in soup
+    m = re.search(r'"views"\s*:\s*(\d+)', html)
+    if m:
+        return m.group(1)
 
     return None
 
@@ -651,12 +656,21 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
     
             # Extract views
             views = None
-            views_el = card.find(class_=re.compile(r"video-thumb-views|video-thumb-info__views|entity-views-container__value"))
+            views_el = card.find(class_=re.compile(r"video-thumb-views|video-thumb-info__views|entity-views-container__value|video-thumb-info__meta-item"))
             if views_el:
                 views_text = _text(views_el)
                 if views_text:
                     # Clean up the views text (e.g., "1.2M views" -> "1.2M")
                     views = re.sub(r"\s*views?\s*$", "", views_text, flags=re.IGNORECASE).strip()
+            
+            if not views:
+                # Fallback: search for text pattern in the entire card text
+                card_text = card.get_text(" ", strip=True)
+                m = re.search(r"(\d+(?:\.\d+)?)\s*([KMB])?\s*(?:views|view)\b", card_text, re.IGNORECASE)
+                if m:
+                    num = m.group(1)
+                    suffix = (m.group(2) or "").upper()
+                    views = f"{num}{suffix}" if suffix else num
     
             # Extract uploader name with avatar
             uploader_name = None

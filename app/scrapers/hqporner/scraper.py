@@ -183,7 +183,6 @@ def parse_page(html: str, url: str) -> dict[str, Any]:
         "description": None,
         "thumbnail_url": thumbnail,
         "duration": duration,
-        "views": "0",
         "uploader_name": uploader,
         "category": "HQPorner",
         "tags": tags,
@@ -272,7 +271,6 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
                 "title": title,
                 "thumbnail_url": thumb,
                 "duration": duration,
-                "views": "0",
                 "uploader_name": "HQPorner"
             })
 
