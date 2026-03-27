@@ -250,7 +250,7 @@ EXPLORE_SOURCES = [
     ExploreSourceResponse(
         baseUrl="https://rule34video.com/",
         nickname="Rule34Video",
-        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/favicon%20(18).ico", # Placeholder index, should be updated if a specific one exists
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/rule34.ico",
         accentColor="#4CAF50",
         category="hentai",
         isVerified=False,
