@@ -257,6 +257,49 @@ async def scrape(url: str) -> dict[str, Any]:
         "has_video": len(streams) > 0
     }
 
+    # Extract Related Videos / Episodes
+    related_videos = []
+    
+    if is_series:
+        # If it's a series page or an episode page, find all episodes in the "Episodes" section
+        for ep_a in soup.select('a.film-grain'):
+            try:
+                ep_href = ep_a.get("href", "")
+                if not ep_href: continue
+                if ep_href.startswith("/"): ep_href = "https://haho.moe" + ep_href
+                
+                # Title: Series + Episode
+                t_series = ep_a.select_one(".overlay .title")
+                t_ep = ep_a.select_one(".overlay .episode-title")
+                ep_title_parts = []
+                if t_series: ep_title_parts.append(t_series.get_text(strip=True))
+                if t_ep: ep_title_parts.append(t_ep.get_text(strip=True))
+                ep_title = " - ".join(ep_title_parts) or "Episode"
+                
+                # Thumbnail
+                ep_img = ep_a.select_one("img.image")
+                ep_thumb = None
+                if ep_img:
+                    ep_thumb = ep_img.get("src") or ep_img.get("data-src") or ep_img.get("data-original")
+                    if ep_thumb:
+                        if ep_thumb.startswith("//"): ep_thumb = "https:" + ep_thumb
+                        elif ep_thumb.startswith("/") and not ep_thumb.startswith("//"): ep_thumb = "https://haho.moe" + ep_thumb
+                
+                # Views
+                ep_views = "0"
+                v_el = ep_a.select_one(".top-overlay.views")
+                if v_el:
+                    ep_views = (v_el.get("title") or "").replace(",", "") or v_el.get_text(strip=True).upper().replace("VIEWS", "").strip()
+
+                related_videos.append({
+                    "url": ep_href,
+                    "title": ep_title.strip(),
+                    "thumbnail_url": ep_thumb,
+                    "views": ep_views,
+                    "uploader_name": "Haho"
+                })
+            except Exception: continue
+
     return {
         "url": url,
         "title": title,
@@ -269,7 +312,7 @@ async def scrape(url: str) -> dict[str, Any]:
         "tags": tags,
         "upload_date": upload_date,
         "video": video_data,
-        "related_videos": []
+        "related_videos": related_videos
     }
 
 async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dict[str, Any]]:

@@ -343,6 +343,24 @@ async def direct_stream_endpoint(
         raise HTTPException(status_code=500, detail=f"Failed to fetch stream URL: {str(e)}")
 
 
+@api_v1_router.get("/videos/related", response_model=list[ListItem], tags=["Videos"])
+async def related_videos_endpoint(request: Request, url: str = Query(..., description="Video page URL")):
+    """
+    Returns related videos (episodes) for a given video URL.
+    """
+    from app.config.settings import settings
+    api_base = settings.BASE_URL or str(request.base_url)
+    try:
+        from app.services.video_streaming import get_video_info
+        info = await get_video_info(url, api_base_url=api_base)
+        related = info.get("related_videos", [])
+        return [ListItem(**it) for it in related]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch related videos: {str(e)}")
+
+
 @api_v1_router.get("/videos/download", tags=["Streaming"])
 async def video_download_endpoint(request: Request, url: str = Query(..., description="Video page URL")):
     """

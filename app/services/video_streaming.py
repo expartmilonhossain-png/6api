@@ -297,7 +297,15 @@ async def get_stream_url(url: str, quality: str = "default", api_base_url: str =
     response = {
         "stream_url": stream_url,
         "quality": selected_quality,
-        "format": fmt
+        "format": fmt,
+        # New: Include metadata from info for frontend details page
+        "title": info.get("title"),
+        "thumbnail_url": info.get("thumbnail_url"),
+        "duration": info.get("duration"),
+        "views": info.get("views"),
+        "uploader_name": info.get("uploader_name"),
+        "tags": info.get("tags", []),
+        "related_videos": info.get("related_videos", []),
     }
     
     # Add available_qualities for Pornhub, YouPorn, and RedTube
