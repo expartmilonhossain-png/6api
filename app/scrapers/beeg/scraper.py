@@ -135,36 +135,37 @@ def _parse_externulls_response(item: dict, url: str, video_id: str) -> dict[str,
             uploader = t.get("tg_name")
             break
             
-    # Streams - Use hls_resources which have correct CDN paths
-    streams = []
-    
-    # 1. HLS Master (Multi)
+    # 1. HLS Master (Multi) - preferred, covers all qualities via adaptive bitrate
     hls_res = file_info.get("hls_resources", {})
     multi = hls_res.get("fl_cdn_multi")
+    has_multi = False
     if multi:
+        has_multi = True
         streams.append({
             "quality": "adaptive",
             "format": "hls",
-            "url": f"https://video.externulls.com/{multi}.m3u8"  # Add .m3u8 extension
+            "url": f"https://video.externulls.com/{multi}.m3u8"
         })
     
-    # 2. Individual quality HLS streams (these work, unlike the qualities section)
-    quality_map = {
-        "fl_cdn_240": "240p",
-        "fl_cdn_360": "360p",
-        "fl_cdn_480": "480p",
-        "fl_cdn_720": "720p",
-        "fl_cdn_1080": "1080p"
-    }
-    
-    for cdn_key, quality_label in quality_map.items():
-        cdn_url = hls_res.get(cdn_key)
-        if cdn_url:
-            streams.append({
-                "quality": quality_label,
-                "format": "hls",  # These are HLS segments, not direct MP4
-                "url": f"https://video.externulls.com/{cdn_url}.m3u8"  # Add .m3u8 extension
-            })
+    # 2. Individual quality HLS streams - ONLY use when no adaptive master exists
+    # (avoids duplicate quality labels: 480p, 720p, 1080p appearing twice)
+    if not has_multi:
+        quality_map = {
+            "fl_cdn_240": "240p",
+            "fl_cdn_360": "360p",
+            "fl_cdn_480": "480p",
+            "fl_cdn_720": "720p",
+            "fl_cdn_1080": "1080p"
+        }
+        
+        for cdn_key, quality_label in quality_map.items():
+            cdn_url = hls_res.get(cdn_key)
+            if cdn_url:
+                streams.append({
+                    "quality": quality_label,
+                    "format": "hls",
+                    "url": f"https://video.externulls.com/{cdn_url}.m3u8"
+                })
                 
     # Sort streams? VideoStreaming service handles sorting usually.
     # But let's ensure HLS is present.
