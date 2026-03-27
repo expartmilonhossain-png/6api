@@ -153,20 +153,19 @@ async def scrape(url: str) -> dict[str, Any]:
     html = await fetch_html(url)
     return await parse_page(html, url)
 
-async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dict[str, Any]]:
+async def _list_generic(base_url: str, page: int = 1) -> list[dict[str, Any]]:
     root = base_url if base_url.endswith("/") else base_url + "/"
 
-    candidates: list[str] = []
-    sep = "&" if "?" in root else "?"
+    candidates = []
     if page <= 1:
         candidates.append(root)
     else:
-        if "/categories/" in root or "/tags/" in root:
-             candidates.append(f"{root.rstrip('/')}/{page}/")
-        candidates.extend([
-            f"{root}latest-updates/{page}/",
-            f"{root}{sep}page={page}",
-        ])
+        # Rule34Video usually uses /page/ format for most sections
+        path = root.rstrip('/')
+        candidates.append(f"{path}/{page}/")
+        # Fallback to query param
+        sep = "&" if "?" in root else "?"
+        candidates.append(f"{root}{sep}page={page}")
 
     html = ""
     used = ""
