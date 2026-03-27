@@ -315,24 +315,14 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
             views = "0"
             views_el = item.select_one(".top-overlay.views")
             if views_el:
-                # Priority 1: Exact count from title attribute
-                exact_views = views_el.get("title")
+                # Priority 1: Exact count from title attribute (clean commas)
+                exact_views = (views_el.get("title") or "").replace(",", "")
                 if exact_views and exact_views.isdigit():
                     views = exact_views
                 else:
-                    # Priority 2: Parse text (e.g., 47.9K, 1.2M)
+                    # Priority 2: Keep formatted text (e.g., 47.9K, 154K, 1.2M)
                     v_text = views_el.get_text(strip=True).upper().replace("VIEW", "").replace("S", "").replace(",", "").strip()
-                    try:
-                        if "K" in v_text:
-                            val = float(v_text.replace("K", "")) * 1000
-                            views = str(int(val))
-                        elif "M" in v_text:
-                            val = float(v_text.replace("M", "")) * 1000000
-                            views = str(int(val))
-                        else:
-                            views = v_text
-                    except Exception:
-                        views = "0"
+                    views = v_text
             
             # Rating and Date
             upload_date = None
@@ -375,24 +365,14 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
                 views = "0"
                 view_tag = link.select_one(".view")
                 if view_tag:
-                    # Priority 1: Exact count from title attribute
-                    exact_views = view_tag.get("title")
+                    # Priority 1: Exact count from title attribute (clean commas)
+                    exact_views = (view_tag.get("title") or "").replace(",", "")
                     if exact_views and exact_views.isdigit():
                         views = exact_views
                     else:
-                        # Priority 2: Parse text (e.g., 47.9K, 1.2M)
+                        # Priority 2: Keep formatted text (e.g., 47.9K, 154K, 1.2M)
                         v_text = view_tag.get_text(strip=True).upper().replace("VIEW", "").replace("S", "").replace(",", "").strip()
-                        try:
-                            if "K" in v_text:
-                                val = float(v_text.replace("K", "")) * 1000
-                                views = str(int(val))
-                            elif "M" in v_text:
-                                val = float(v_text.replace("M", "")) * 1000000
-                                views = str(int(val))
-                            else:
-                                views = v_text
-                        except Exception:
-                            views = "0"
+                        views = v_text
                 
                 # Rating and Date
                 upload_date = None
@@ -450,24 +430,14 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
                 
                 view_tag = item.select_one("i.fa-eye")
                 if view_tag and view_tag.parent:
-                    # Priority 1: Exact count from title attribute
-                    exact_views = view_tag.parent.get("title")
+                    # Priority 1: Exact count from title attribute (clean commas)
+                    exact_views = (view_tag.parent.get("title") or "").replace(",", "")
                     if exact_views and exact_views.isdigit():
                         views = exact_views
                     else:
-                        # Priority 2: Parse text (e.g., 47.9K, 1.2M)
+                        # Priority 2: Keep formatted text (e.g., 47.9K, 154K, 1.2M)
                         v_text = view_tag.parent.get_text(strip=True).upper().replace("VIEW", "").replace("S", "").replace(",", "").strip()
-                        try:
-                            if "K" in v_text:
-                                val = float(v_text.replace("K", "")) * 1000
-                                views = str(int(val))
-                            elif "M" in v_text:
-                                val = float(v_text.replace("M", "")) * 1000000
-                                views = str(int(val))
-                            else:
-                                views = v_text
-                        except Exception:
-                            views = "0"
+                        views = v_text
                         
                 heart_icon = item.select_one("i.fa-heart")
                 if heart_icon and heart_icon.parent:
