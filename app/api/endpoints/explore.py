@@ -246,6 +246,19 @@ EXPLORE_SOURCES = [
         disable=False,
         pageSize=100,
     ),
+    ExploreSourceResponse(
+        baseUrl="https://rule34video.com/",
+        nickname="Rule34Video",
+        favicon="https://raw.githubusercontent.com/milon4999/apphub-release/refs/heads/main/logo/favicon%20(18).ico", # Placeholder index, should be updated if a specific one exists
+        accentColor="#4CAF50",
+        category="free",
+        isVerified=False,
+        hasCategories=True,
+        searchUrlTemplate="https://rule34video.com/search/{query}/",
+        sourceId="rule34video",
+        disable=False,
+        pageSize=35,
+    ),
 ]
 
 EXPLORE_CONFIG = ExploreConfigData(

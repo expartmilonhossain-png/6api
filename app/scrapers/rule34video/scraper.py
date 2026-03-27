@@ -124,10 +124,9 @@ async def parse_page(html: str, url: str) -> dict[str, Any]:
             tags = [k.strip() for k in kw.split(",") if k.strip()]
             
     # Extract views, duration by generic patterns if needed
-    duration = None
-    dur_elem = soup.find(class_=re.compile("duration|time"))
-    if dur_elem:
-        duration = _text(dur_elem)
+    duration = _text(soup.select_one('.time')) or _text(soup.find(class_=re.compile("duration|time")))
+    views = _text(soup.select_one('.views'))
+    upload_date = _text(soup.select_one('.added'))
 
     # uploader
     uploader = None
@@ -141,7 +140,8 @@ async def parse_page(html: str, url: str) -> dict[str, Any]:
         "description": description,
         "thumbnail_url": thumbnail,
         "duration": duration,
-        "views": None,
+        "views": views,
+        "upload_date": upload_date,
         "uploader_name": uploader,
         "category": None,
         "tags": tags,
@@ -212,16 +212,40 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
         title_el = item.select_one('.title')
         title = _text(title_el) or (img.get('alt') if img else None)
 
-        dur_el = item.select_one('.duration')
+        dur_el = item.select_one('.time') or item.select_one('.duration')
         duration = _text(dur_el)
+        
+        views_el = item.select_one('.views')
+        views = _text(views_el)
+        
+        added_el = item.select_one('.added')
+        upload_date = _text(added_el)
 
         items.append({
             "url": abs_url,
             "title": title or "Unknown Video",
             "thumbnail_url": thumb,
             "duration": duration,
-            "views": None,
+            "views": views,
+            "upload_date": upload_date,
             "uploader_name": "rule34video",
         })
 
     return items
+
+async def list_videos(base_url: str, page: int = 1, limit: int = 100) -> list[dict[str, object]]:
+    """List videos from a rule34video generic page (categories, search, etc.)"""
+    return await _list_generic(base_url, page)
+
+def get_categories() -> list[dict[str, object]]:
+    """Load categories from categories.json"""
+    import json
+    import os
+    try:
+        path = os.path.join(os.path.dirname(__file__), 'categories.json')
+        if os.path.exists(path):
+            with open(path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Error loading categories: {e}")
+    return []

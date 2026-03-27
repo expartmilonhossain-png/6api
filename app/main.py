@@ -268,6 +268,7 @@ async def get_categories(source: str) -> list[CategoryItem]:
         if s == "brazzpw": return [CategoryItem(**c) for c in brazzpw.get_categories()]
         if s == "gosexpod": return [CategoryItem(**c) for c in gosexpod.get_categories()]
         if s == "watcherotic": return [CategoryItem(**c) for c in watcherotic.get_categories()]
+        if s == "rule34video": return [CategoryItem(**c) for c in rule34video.get_categories()]
         raise HTTPException(status_code=400, detail="Unknown source")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load categories: {str(e)}")
