@@ -271,9 +271,24 @@ async def scrape(url: str) -> dict[str, Any]:
                 # Title: Series + Episode
                 t_series = ep_a.select_one(".overlay .title")
                 t_ep = ep_a.select_one(".overlay .episode-title")
+                ep_slug = ep_a.select_one(".episode-slug")
+                
                 ep_title_parts = []
-                if t_series: ep_title_parts.append(t_series.get_text(strip=True))
-                if t_ep: ep_title_parts.append(t_ep.get_text(strip=True))
+                if t_series: 
+                    t_text = t_series.get_text(strip=True)
+                    if t_text and t_text.lower() != "no title":
+                        ep_title_parts.append(t_text)
+                
+                if t_ep:
+                    ep_text = t_ep.get_text(strip=True)
+                    if ep_text and ep_text.lower() != "no title":
+                        ep_title_parts.append(ep_text)
+                        
+                if not ep_title_parts and ep_slug:
+                    slug_text = ep_slug.get_text(strip=True)
+                    if slug_text:
+                        ep_title_parts.append(slug_text)
+
                 ep_title = " - ".join(ep_title_parts) or "Episode"
                 
                 # Thumbnail
