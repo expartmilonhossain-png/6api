@@ -158,45 +158,98 @@ async def scrape(url: str) -> dict[str, Any]:
     streams = []
     default_url = None
 
-    # If it's a series page, we need to find the first episode to get streams
+    async def _extract_streams_from_embed(embed_url: str) -> list:
+        """Fetch the embed page and pull streams from <source> and regex."""
+        s_list = []
+        try:
+            e_html = await fetch_html(embed_url)
+            e_soup = BeautifulSoup(e_html, "lxml")
+            # Priority: <source> tags inside <video>
+            for src_tag in e_soup.select("video source"):
+                src = src_tag.get("src", "")
+                if not src: continue
+                quality = src_tag.get("title") or src_tag.get("label") or "default"
+                fmt = "hls" if ".m3u8" in src else "mp4"
+                s_list.append({"quality": quality, "url": src, "format": fmt})
+            if not s_list:
+                # Fallback regex in embed HTML
+                for lnk in re.findall(r'(https?://[^\s\'"]+\.m3u8[^\s\'"]*)', e_html):
+                    s_list.append({"quality": "default", "url": lnk.replace("\\/", "/"), "format": "hls"})
+                for lnk in re.findall(r'(https?://[^\s\'"]+\.mp4[^\s\'"]*)', e_html):
+                    s_list.append({"quality": "default", "url": lnk.replace("\\/", "/"), "format": "mp4"})
+        except Exception as ex:
+            print(f"⚠️ Embed fetch failed: {ex}")
+        return s_list
+
+    async def _get_streams_for_episode(ep_url: str) -> list:
+        """Fetch episode page, find iframe embed, return streams."""
+        try:
+            ep_html = await fetch_html(ep_url)
+            ep_soup = BeautifulSoup(ep_html, "lxml")
+            iframe = ep_soup.find("iframe")
+            if iframe:
+                iframe_src = iframe.get("src", "")
+                if iframe_src:
+                    if iframe_src.startswith("/"): iframe_src = "https://haho.moe" + iframe_src
+                    return await _extract_streams_from_embed(iframe_src)
+            # Fallback: regex on episode HTML itself
+            s_list = []
+            for lnk in re.findall(r'(https?://[^\s\'"]+\.m3u8[^\s\'"]*)', ep_html):
+                s_list.append({"quality": "default", "url": lnk.replace("\\/", "/"), "format": "hls"})
+            for lnk in re.findall(r'(https?://[^\s\'"]+\.mp4[^\s\'"]*)', ep_html):
+                s_list.append({"quality": "default", "url": lnk.replace("\\/", "/"), "format": "mp4"})
+            return s_list
+        except Exception as ex:
+            print(f"⚠️ Episode fetch failed: {ex}")
+            return []
+
+    embed_url = None
     if is_series and not is_episode:
-        first_ep = soup.select_one(".episodelist a")
+        # Series page: find first episode via a.film-grain cards
+        first_ep = soup.select_one("a.film-grain")
         if first_ep:
-            ep_url = first_ep.get("href")
+            ep_url = first_ep.get("href", "")
             if ep_url:
                 if ep_url.startswith("/"): ep_url = "https://haho.moe" + ep_url
-                # Recursive call to get streams from episode page
-                ep_data = await scrape(ep_url)
-                streams = ep_data.get("video", {}).get("streams", [])
-                default_url = ep_data.get("video", {}).get("default")
-    
-    # If it's an episode page, extract streams directly
-    if not streams:
-        # Search for m3u8 in the HTML source
-        m3u8_links = re.findall(r'(https?://[^\s\'"]+\.m3u8[^\s\'"]*)', html)
-        for link in m3u8_links:
-            clean_link = link.replace("\\/", "/").replace("&amp;", "&")
-            if clean_link not in [s["url"] for s in streams]:
-                streams.append({
-                    "quality": "default",
-                    "url": clean_link,
-                    "format": "hls"
-                })
-                if not default_url:
-                    default_url = clean_link
+                try:
+                    ep_html = await fetch_html(ep_url)
+                    ep_soup = BeautifulSoup(ep_html, "lxml")
+                    iframe = ep_soup.find("iframe")
+                    if iframe:
+                        embed_url = iframe.get("src", "")
+                        if embed_url and embed_url.startswith("/"): 
+                            embed_url = "https://haho.moe" + embed_url
+                except Exception:
+                    pass
+    elif is_episode:
+        iframe = soup.find("iframe")
+        if iframe:
+            embed_url = iframe.get("src", "")
+            if embed_url and embed_url.startswith("/"): 
+                embed_url = "https://haho.moe" + embed_url
 
-        # Fallback to mp4
-        mp4_links = re.findall(r'(https?://[^\s\'"]+\.mp4[^\s\'"]*)', html)
-        for link in mp4_links:
-            clean_link = link.replace("\\/", "/").replace("&amp;", "&")
-            if clean_link not in [s["url"] for s in streams]:
-                streams.append({
-                    "quality": "default",
-                    "url": clean_link,
-                    "format": "mp4"
-                })
-                if not default_url:
-                    default_url = clean_link
+    if embed_url:
+        # 1. Add embed as a stream
+        streams.append({
+            "quality": "Embed Player",
+            "url": embed_url,
+            "format": "embed"
+        })
+        # 2. Extract direct links from embed
+        direct_streams = await _extract_streams_from_embed(embed_url)
+        streams.extend(direct_streams)
+        # 3. Use embed as default
+        default_url = embed_url
+
+    if not streams:
+        # Last resort: regex on this page
+        for lnk in re.findall(r'(https?://[^\s\'"]+\.m3u8[^\s\'"]*)', html):
+            streams.append({"quality": "default", "url": lnk.replace("\\/", "/"), "format": "hls"})
+        for lnk in re.findall(r'(https?://[^\s\'"]+\.mp4[^\s\'"]*)', html):
+            streams.append({"quality": "default", "url": lnk.replace("\\/", "/"), "format": "mp4"})
+
+    if streams and not default_url:
+        default_url = streams[0]["url"]
 
     video_data = {
         "streams": streams,
@@ -260,9 +313,26 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
             
             # Views
             views = "0"
-            view_tag = item.select_one(".top-overlay.views")
-            if view_tag:
-                views = view_tag.get_text(strip=True)
+            views_el = item.select_one(".top-overlay.views")
+            if views_el:
+                # Priority 1: Exact count from title attribute
+                exact_views = views_el.get("title")
+                if exact_views and exact_views.isdigit():
+                    views = exact_views
+                else:
+                    # Priority 2: Parse text (e.g., 47.9K, 1.2M)
+                    v_text = views_el.get_text(strip=True).upper().replace("VIEW", "").replace("S", "").replace(",", "").strip()
+                    try:
+                        if "K" in v_text:
+                            val = float(v_text.replace("K", "")) * 1000
+                            views = str(int(val))
+                        elif "M" in v_text:
+                            val = float(v_text.replace("M", "")) * 1000000
+                            views = str(int(val))
+                        else:
+                            views = v_text
+                    except Exception:
+                        views = "0"
             
             # Rating and Date
             upload_date = None
@@ -305,7 +375,24 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
                 views = "0"
                 view_tag = link.select_one(".view")
                 if view_tag:
-                    views = view_tag.get_text(strip=True)
+                    # Priority 1: Exact count from title attribute
+                    exact_views = view_tag.get("title")
+                    if exact_views and exact_views.isdigit():
+                        views = exact_views
+                    else:
+                        # Priority 2: Parse text (e.g., 47.9K, 1.2M)
+                        v_text = view_tag.get_text(strip=True).upper().replace("VIEW", "").replace("S", "").replace(",", "").strip()
+                        try:
+                            if "K" in v_text:
+                                val = float(v_text.replace("K", "")) * 1000
+                                views = str(int(val))
+                            elif "M" in v_text:
+                                val = float(v_text.replace("M", "")) * 1000000
+                                views = str(int(val))
+                            else:
+                                views = v_text
+                        except Exception:
+                            views = "0"
                 
                 # Rating and Date
                 upload_date = None
@@ -361,9 +448,26 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 20) -> list[dic
                 views = "0"
                 tags = []
                 
-                eye_icon = item.select_one("i.fa-eye")
-                if eye_icon and eye_icon.parent:
-                    views = eye_icon.parent.get_text(strip=True)
+                view_tag = item.select_one("i.fa-eye")
+                if view_tag and view_tag.parent:
+                    # Priority 1: Exact count from title attribute
+                    exact_views = view_tag.parent.get("title")
+                    if exact_views and exact_views.isdigit():
+                        views = exact_views
+                    else:
+                        # Priority 2: Parse text (e.g., 47.9K, 1.2M)
+                        v_text = view_tag.parent.get_text(strip=True).upper().replace("VIEW", "").replace("S", "").replace(",", "").strip()
+                        try:
+                            if "K" in v_text:
+                                val = float(v_text.replace("K", "")) * 1000
+                                views = str(int(val))
+                            elif "M" in v_text:
+                                val = float(v_text.replace("M", "")) * 1000000
+                                views = str(int(val))
+                            else:
+                                views = v_text
+                        except Exception:
+                            views = "0"
                         
                 heart_icon = item.select_one("i.fa-heart")
                 if heart_icon and heart_icon.parent:

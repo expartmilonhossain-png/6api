@@ -24,7 +24,7 @@ async def get_video_info(url: str, api_base_url: str = "http://localhost:8000") 
         }
     """
     # Import here to avoid circular dependency
-    from app.scrapers import xnxx, xhamster, xvideos, masa49, pornhub, youporn, redtube, beeg, spankbang, fapnut, pornxp, hqporner, xxxparodyhd, pornwex, tube8, pornhat, brazzpw, gosexpod, watcherotic, rule34video
+    from app.scrapers import xnxx, xhamster, xvideos, masa49, pornhub, youporn, redtube, beeg, spankbang, fapnut, pornxp, hqporner, xxxparodyhd, pornwex, tube8, pornhat, brazzpw, gosexpod, watcherotic, rule34video, haho
     from app.api.endpoints import thumbnails
     from urllib.parse import urlparse
     
@@ -76,6 +76,8 @@ async def get_video_info(url: str, api_base_url: str = "http://localhost:8000") 
         scraper_module = watcherotic
     elif rule34video.can_handle(host):
         scraper_module = rule34video
+    elif haho.can_handle(host):
+        scraper_module = haho
     else:
         raise HTTPException(
             status_code=400,
@@ -307,7 +309,8 @@ async def get_stream_url(url: str, quality: str = "default", api_base_url: str =
         "redtube.net" in parsed_url.netloc.lower() or
         "tube8.com" in parsed_url.netloc.lower() or
         "xxxparodyhd.net" in parsed_url.netloc.lower() or
-        "xparody.com" in parsed_url.netloc.lower() or
+        "xparody.com" in parsed_url.netloc.lower() or 
+        "haho.moe" in parsed_url.netloc.lower() or 
         "pornhat.com" in parsed_url.netloc.lower()):
         qualities = {}
         all_streams = video_data.get("streams", [])
