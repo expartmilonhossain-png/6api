@@ -55,7 +55,7 @@ async def global_search(
     start_time = time()
     
     # Import scraper modules
-    from app.scrapers import xhamster, xnxx, xvideos, masa49, pornhub, youporn, redtube, beeg, spankbang, hqporner
+    from app.scrapers import xhamster, xnxx, xvideos, masa49, pornhub, youporn, redtube, beeg, spankbang, hqporner, hanime
     
     # Build scraper registry (until we have real registry)
     available_scrapers = {
@@ -68,7 +68,8 @@ async def global_search(
         'redtube': redtube,
         'beeg': beeg,
         'spankbang': spankbang,
-        'hqporner': hqporner
+        'hqporner': hqporner,
+        'hanime': hanime
     }
     
     # Determine which sites to search
@@ -159,7 +160,8 @@ def _build_search_url(site_name: str, query: str, scraper_module) -> str:
         "redtube": f"https://www.redtube.com/?search={query_encoded}",
         "beeg": f"https://beeg.com/?f={query_encoded}",
         "spankbang": f"https://spankbang.com/s/{query_encoded}/",
-        "hqporner": f"https://hqporner.com/?q={query_encoded}"
+        "hqporner": f"https://hqporner.com/?q={query_encoded}",
+        "hanime": f"https://hanime.tv/search?q={query_encoded}"
     }
     
     return search_patterns.get(site_name)
@@ -203,7 +205,7 @@ async def _search_site(
         return []
 
 
-# Additional helper: Get trending across all sites
+    # Additional helper: Get trending across all sites
 async def global_trending(
     sites: Optional[list[str]] = None,
     limit_per_site: int = 10
@@ -213,7 +215,7 @@ async def global_trending(
     
     Similar to global search but uses trending pages
     """
-    from app.scrapers import xhamster, xnxx, xvideos, masa49, pornhub, youporn, redtube, beeg, spankbang, hqporner
+    from app.scrapers import xhamster, xnxx, xvideos, masa49, pornhub, youporn, redtube, beeg, spankbang, hqporner, hanime
     
     available_scrapers = {
         'xhamster': (xhamster, "https://xhamster.com/trending"),
@@ -225,7 +227,8 @@ async def global_trending(
         'redtube': (redtube, "https://www.redtube.com/top"),
         'beeg': (beeg, "https://beeg.com/asian"),
         'spankbang': (spankbang, "https://spankbang.com/trending_videos"),
-        'hqporner': (hqporner, "https://hqporner.com/top")
+        'hqporner': (hqporner, "https://hqporner.com/top"),
+        'hanime': (hanime, "https://hanime.tv/trending")
     }
     
     if not sites:

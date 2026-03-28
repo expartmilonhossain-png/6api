@@ -273,6 +273,19 @@ EXPLORE_SOURCES = [
         disable=False,
         pageSize=36,
     ),
+    ExploreSourceResponse(
+        baseUrl="https://hanime.tv/",
+        nickname="HAnime.tv",
+        favicon="https://hanime.tv/favicon.ico",
+        accentColor="#f10031",
+        category="hentai",
+        isVerified=True,
+        hasCategories=True,
+        searchUrlTemplate="https://hanime.tv/search?q={query}",
+        sourceId="hanime",
+        disable=False,
+        pageSize=100,
+    ),
 ]
 
 EXPLORE_CONFIG = ExploreConfigData(

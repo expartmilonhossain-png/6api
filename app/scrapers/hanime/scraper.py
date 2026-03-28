@@ -1,0 +1,203 @@
+from __future__ import annotations
+import json
+import re
+import secrets
+from typing import Any, Optional
+import httpx
+from urllib.parse import urlparse
+
+from app.core.pool import fetch_json, post_json
+
+def can_handle(host: str) -> bool:
+    return "hanime.tv" in host.lower()
+
+def _extract_slug(url: str) -> Optional[str]:
+    """Extract slug from URLs like https://hanime.tv/videos/hentai/[slug]"""
+    m = re.search(r"/videos/hentai/([^/?#]+)", url)
+    if m:
+        return m.group(1)
+    return None
+
+async def scrape(url: str) -> dict[str, Any]:
+    slug = _extract_slug(url)
+    if not slug:
+        raise ValueError(f"Could not extract slug from URL: {url}")
+
+    # Use the v8 API to get video details
+    api_url = f"https://hanime.tv/api/v8/video?id={slug}"
+    
+    # HAnime.tv often requires specific headers
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Referer": "https://hanime.tv/",
+        "X-Signature-Version": "web2",
+        "X-Signature": secrets.token_hex(32)
+    }
+    
+    data = await fetch_json(api_url, headers=headers)
+    
+    video_info = data.get("hentai_video", {})
+    if not video_info:
+        raise ValueError(f"No video information found for slug: {slug}")
+
+    # Metadata
+    title = video_info.get("name")
+    description = video_info.get("description")
+    thumbnail = video_info.get("poster_url") or video_info.get("cover_url")
+    views = str(video_info.get("views", "0"))
+    upload_date = video_info.get("released_at") # Or created_at_unix
+    duration = None # HAnime doesn't always provide duration in main object
+    
+    tags = [tag.get("text") for tag in video_info.get("hentai_tags", []) if tag.get("text")]
+    uploader = video_info.get("brand")
+
+    # Streams
+    streams = []
+    default_url = None
+    
+    manifest = data.get("videos_manifest", {})
+    servers = manifest.get("servers", [])
+    
+    for server in servers:
+        server_name = server.get("name", "Unknown Server")
+        for stream in server.get("streams", []):
+            url_stream = stream.get("url")
+            if not url_stream:
+                continue
+                
+            quality = stream.get("height", "unknown")
+            quality_str = f"{quality}p" if str(quality).isdigit() else quality
+            
+            # Format detection
+            ext = "hls" if ".m3u8" in url_stream.lower() else "mp4"
+            
+            streams.append({
+                "quality": quality_str,
+                "url": url_stream,
+                "format": ext,
+                "server": server_name
+            })
+            
+            # Use the highest quality as default
+            if not default_url:
+                default_url = url_stream
+
+    video_data = {
+        "streams": streams,
+        "default": default_url,
+        "has_video": len(streams) > 0
+    }
+
+    return {
+        "url": url,
+        "title": title,
+        "description": description,
+        "thumbnail_url": thumbnail,
+        "duration": duration,
+        "views": views,
+        "upload_date": upload_date,
+        "uploader_name": uploader,
+        "category": None,
+        "tags": tags,
+        "video": video_data,
+        "related_videos": [] # We could potentially parse from recommendations
+    }
+
+async def list_videos(base_url: str, page: int = 1, limit: int = 100) -> list[dict[str, object]]:
+    """List videos from hanime.tv API"""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Referer": "https://hanime.tv/",
+        "X-Signature-Version": "web2",
+        "X-Signature": secrets.token_hex(32)
+    }
+    
+    # API is 0-indexed using 'p' parameter
+    api_page = page - 1 if page > 0 else 0
+    
+    api_url = f"https://hanime.tv/api/v8/browse-trending?time=month&p={api_page}"
+    if "browse-new-releases" in base_url or "newest" in base_url.lower():
+        api_url = f"https://hanime.tv/api/v8/browse-new-releases?p={api_page}"
+    
+    # Default to newest if search fails or no query
+    search_api = "https://search.htv-services.com/"
+    
+    # Map common URLs to search parameters
+    order_by = "created_at_unix"
+    ordering = "desc"
+    search_text = ""
+    
+    if "browse-trending" in base_url or "trending" in base_url.lower():
+        order_by = "views"
+        # Or order_by: "monthly_rank"
+    
+    parsed = urlparse(base_url)
+    params = dict(p.split('=') for p in parsed.query.split('&') if '=' in p)
+    search_text = params.get('q', search_text)
+
+    payload = {
+        "search_text": search_text,
+        "tags": [],
+        "tags_mode": "and",
+        "brands": [],
+        "blacklist": [],
+        "order_by": order_by,
+        "ordering": ordering,
+        "page": api_page
+    }
+
+    try:
+        data = await post_json(search_api, payload, headers=headers)
+        hits = data.get("hits", [])
+        if isinstance(hits, str):
+            hits = json.loads(hits)
+            
+        items = []
+        for v in hits:
+            slug = v.get("slug")
+            if not slug: continue
+            items.append({
+                "url": f"https://hanime.tv/videos/hentai/{slug}",
+                "title": v.get("name"),
+                "thumbnail_url": v.get("poster_url") or v.get("cover_url"),
+                "duration": None,
+                "views": str(v.get("views", "0")),
+                "upload_date": None,
+                "uploader_name": v.get("brand")
+            })
+        return items
+    except Exception as e:
+        print(f"Error using hanime search api: {e}")
+        # Fallback to the original browse API if search API fails
+        try:
+            data = await fetch_json(api_url, headers=headers)
+            videos = data.get("hentai_videos", [])
+            items = []
+            for v in videos:
+                slug = v.get("slug")
+                if not slug: continue
+                items.append({
+                    "url": f"https://hanime.tv/videos/hentai/{slug}",
+                    "title": v.get("name"),
+                    "thumbnail_url": v.get("poster_url") or v.get("cover_url"),
+                    "duration": None,
+                    "views": str(v.get("views", "0")),
+                    "upload_date": None,
+                    "uploader_name": v.get("brand")
+                })
+            return items
+        except Exception as e2:
+            print(f"Error falling back to hanime browse api: {e2}")
+            return []
+
+def get_categories() -> list[dict[str, object]]:
+    """Load categories from categories.json"""
+    import os
+    try:
+        path = os.path.join(os.path.dirname(__file__), 'categories.json')
+        if os.path.exists(path):
+            with open(path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Error loading hanime categories: {e}")
+    return []

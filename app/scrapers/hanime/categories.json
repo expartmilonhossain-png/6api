@@ -1,0 +1,17 @@
+[
+    {
+        "name": "Trending",
+        "url": "https://hanime.tv/api/v8/browse-trending",
+        "video_count": 0
+    },
+    {
+        "name": "Newest",
+        "url": "https://hanime.tv/api/v8/browse-new-releases",
+        "video_count": 0
+    },
+    {
+        "name": "Most Viewed",
+        "url": "https://hanime.tv/api/v8/browse-trending?time=all_time",
+        "video_count": 0
+    }
+]
