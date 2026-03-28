@@ -54,8 +54,6 @@ async def scrape(url: str) -> dict[str, Any]:
     # Streams
     streams = []
     default_url = None
-    default_quality = None
-    default_ext = None
     
     manifest = data.get("videos_manifest", {})
     servers = manifest.get("servers", [])
@@ -83,25 +81,27 @@ async def scrape(url: str) -> dict[str, Any]:
             # Use the highest quality as default
             if not default_url:
                 default_url = url_stream
-                default_quality = quality_str
-                default_ext = ext
-            elif int(str(quality)) > int(str(default_quality).replace("p", "")) if str(default_quality).replace("p", "").isdigit() and str(quality).isdigit() else False:
-                default_url = url_stream
-                default_quality = quality_str
-                default_ext = ext
 
-    res = {
-        "stream_url": default_url,
-        "quality": default_quality or "default",
-        "format": default_ext or "mp4"
+    video_data = {
+        "streams": streams,
+        "default": default_url,
+        "has_video": len(streams) > 0
     }
 
-    # Add available streams to response for resolution switching
-    for s in streams:
-        res[s["quality"]] = s["url"]
-        res[f"{s['server']} - {s['quality']}"] = s["url"]
-
-    return res
+    return {
+        "url": url,
+        "title": title,
+        "description": description,
+        "thumbnail_url": thumbnail,
+        "duration": duration,
+        "views": views,
+        "upload_date": upload_date,
+        "uploader_name": uploader,
+        "category": None,
+        "tags": tags,
+        "video": video_data,
+        "related_videos": [] # We could potentially parse from recommendations
+    }
 
 async def list_videos(base_url: str, page: int = 1, limit: int = 100) -> list[dict[str, object]]:
     """List videos from hanime.tv API"""
