@@ -32,9 +32,17 @@ def _extract_next_data(html: str) -> dict[str, Any]:
 
 async def _get_build_id() -> str:
     """Fetch the homepage and extract the Next.js build ID"""
-    html = await fetch_html("https://rou.video/", headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"})
-    data = _extract_next_data(html)
-    return data.get("buildId", "Rljy_YIzgVHS1mC9i8aEE") # Fallback to a known build ID
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"}
+    for url in ["https://rou.video/home", "https://rou.video/", "https://rou.video/v"]:
+        try:
+            html = await fetch_html(url, headers=headers)
+            data = _extract_next_data(html)
+            bid = data.get("buildId")
+            if bid:
+                return bid
+        except Exception:
+            continue
+    return "Rljy_YIzgVHS1mC9i8aEE" # Fallback to a known build ID
 
 async def scrape(url: str) -> dict[str, Any]:
     parsed = urlparse(url)
@@ -135,11 +143,7 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 100) -> list[di
         "Referer": "https://rou.video/"
     }
     
-    # We need to get the build ID first
-    # This might be slow if we do it every time, but for now it's robust
-    html = await fetch_html("https://rou.video/home", headers=headers)
-    data = _extract_next_data(html)
-    build_id = data.get("buildId")
+    build_id = await _get_build_id()
     if not build_id:
         return []
 
@@ -165,10 +169,24 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 100) -> list[di
 
     try:
         json_data = await fetch_json(api_url, headers=headers)
-        videos = json_data.get("pageProps", {}).get("videos", [])
+        prop_data = json_data.get("pageProps", {})
+        videos = prop_data.get("videos")
+        
         if not videos:
-            # Check if it's a category page structure
-            videos = json_data.get("pageProps", {}).get("tag", {}).get("videos", [])
+            # Check tag-based videos (category pages)
+            videos = prop_data.get("tag", {}).get("videos")
+            
+        if not videos:
+            # Check for home page specific lists
+            # latestVideos is usually the most relevant for a general list
+            home_keys = ["latestVideos", "dailyHotCNAV", "hotCNAV", "dailyHotSelfie", "hotSelfie", "dailyHot91", "hot91"]
+            for key in home_keys:
+                videos = prop_data.get(key)
+                if videos:
+                    break
+        
+        if not videos:
+            videos = []
             
         items = []
         for v in videos:
