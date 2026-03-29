@@ -192,18 +192,24 @@ async def list_videos(base_url: str, page: int = 1, limit: int = 100) -> list[di
         for v in videos:
             v_id = v.get("id")
             if not v_id: continue
+            dur = v.get("duration")
+            if dur is not None:
+                dur = str(dur)
+            publisher = v.get("publisher")
             items.append({
                 "url": f"https://rou.video/v/{v_id}",
                 "title": v.get("name") or v.get("nameZh"),
                 "thumbnail_url": v.get("coverImageUrl"),
-                "duration": v.get("duration"),
+                "duration": dur,
                 "views": str(v.get("viewCount", "0")),
                 "upload_date": v.get("createdAt"),
-                "uploader_name": v.get("publisher", {}).get("name") if v.get("publisher") else None
+                "uploader_name": publisher.get("name") if isinstance(publisher, dict) else None
             })
+
         return items
     except Exception as e:
-        print(f"Error listing rou.video videos: {e}")
+        import traceback
+        print(f"Error listing rou.video videos: {e}\n{traceback.format_exc()}")
         return []
 
 def get_categories() -> list[dict[str, object]]:

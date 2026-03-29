@@ -199,21 +199,21 @@ async def list_videos(request: Request, base_url: str, page: int = 1, limit: int
 
     try:
         items = await _list_dispatch(base_url, host, page, limit)
+        
+        if items:
+            # Wrap thumbnails in proxy for certain sources (like HQPorner)
+            from app.config.settings import settings
+            api_base = settings.BASE_URL or str(request.base_url)
+            for it in items:
+                if "thumbnail_url" in it:
+                    it["thumbnail_url"] = thumbnails.wrap_thumbnail_url(it["thumbnail_url"], api_base)
+            await cache.set(cache_key, items, ttl_seconds=3600)  # Cache for 1 hour (aggressive)
+        
+        return [ListItem(**it) for it in items]
     except httpx.HTTPStatusError as e:
         raise HTTPException(status_code=e.response.status_code, detail="Upstream returned error") from e
     except Exception as e:
-        raise HTTPException(status_code=502, detail="Failed to fetch url") from e
-    
-    if items:
-        # Wrap thumbnails in proxy for certain sources (like HQPorner)
-        from app.config.settings import settings
-        api_base = settings.BASE_URL or str(request.base_url)
-        for it in items:
-            if "thumbnail_url" in it:
-                it["thumbnail_url"] = thumbnails.wrap_thumbnail_url(it["thumbnail_url"], api_base)
-        await cache.set(cache_key, items, ttl_seconds=3600)  # Cache for 1 hour (aggressive)
-    
-    return [ListItem(**it) for it in items]
+        raise HTTPException(status_code=502, detail=f"Failed to fetch url: {e}") from e
 
 @api_v1_router.post("/crawls", response_model=list[ListItem], tags=["Crawling"])
 async def create_crawl(request: Request, body: CrawlRequestV1) -> list[ListItem]:
