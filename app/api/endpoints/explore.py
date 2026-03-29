@@ -299,6 +299,19 @@ EXPLORE_SOURCES = [
         disable=False,
         pageSize=24,
     ),
+    ExploreSourceResponse(
+        baseUrl="https://fikfap.com/",
+        nickname="FikFap",
+        favicon="https://fikfap.com/favicon.ico",
+        accentColor="#E91E63",
+        category="porn",
+        isVerified=True,
+        hasCategories=False,
+        searchUrlTemplate="https://fikfap.com/search?q={query}",
+        sourceId="fikfap",
+        disable=False,
+        pageSize=20,
+    ),
 ]
 
 EXPLORE_CONFIG = ExploreConfigData(
