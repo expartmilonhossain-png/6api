@@ -92,6 +92,8 @@ async def scrape(url: str) -> dict[str, Any]:
         decrypted = _decrypt_ev(ev_data.get("d", ""), ev_data.get("k", 0))
         video_url = decrypted.get("videoUrl")
         if video_url:
+            # rou.video disguises HLS playlists with .jpg extension — fix it
+            video_url = video_url.replace("/index.jpg", "/index.m3u8")
             streams.append({
                 "quality": "Auto",
                 "url": video_url,
