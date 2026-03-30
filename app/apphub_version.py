@@ -22,7 +22,7 @@ DOWNLOAD_SIZES = {
     "universal": 40000000
 }
 DOWNLOAD_URL = DOWNLOAD_URLS["universal"]
-APK_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"  # Example SHA-256 Hash for download integrity verification
+APK_HASH = ""  # Example SHA-256 Hash for download integrity verification
 SIZE_BYTES = DOWNLOAD_SIZES["universal"]
 
 # Update Enforcement
